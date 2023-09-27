@@ -29,6 +29,7 @@ classifiers = [
 dependencies = [
     "databricks-sdk~=0.9.0",
     "PyYAML>=6.0.0,<7.0.0",
+    "sqlglot~=18.8.0",
 ]
 
 [project.optional-dependencies]
