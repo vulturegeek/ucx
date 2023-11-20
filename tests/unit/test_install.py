@@ -86,14 +86,25 @@ def test_install_cluster_override_jobs(ws, mocker, tmp_path):
             return "no"
         return "42"
 
+    def mock_create_job(**args):
+        assert args["job_clusters"] == [], "job_clusters argument should be empty list"
+        return jobs.CreateResponse(job_id="abc")
+
+    cluster_id = "9999-999999-abcdefgh"
+
     with mocker.patch.object(WorkspaceInstaller, attribute="_sorted_tasks", return_value=tasks):
         config_bytes = yaml.dump(WorkspaceConfig(inventory_database="a").as_dict()).encode("utf8")
         ws.workspace.download = lambda _: io.BytesIO(config_bytes)
+        ws.jobs.create = mock_create_job
         install = WorkspaceInstaller(ws)
         install._question = mock_question
         install._deployed_steps = {"wl_1": 1, "wl_2": 2}
+        install._override_clusters = {"main": cluster_id, "tacl": cluster_id}
         install._job_dashboard_task = MagicMock(name="_job_dashboard_task")
         install._create_jobs()
+
+
+#        ws.jobs.create.assert_called_with(job_clusters=[])
 
 
 def test_replace_clusters_for_integration_tests(ws):
