@@ -51,6 +51,63 @@ def ws(mocker):
     return ws
 
 
+def test_install_cluster_override(ws, mocker, tmp_path):
+    jobs_mock = MagicMock()
+
+    def jobs_create(*args, **kwargs):
+        assert "write_protected_dbfs" not in args, f"{args}"
+        assert "write_protected_dbfs" not in kwargs, f"{kwargs}"
+        return MagicMock(job_id="bar")
+
+    jobs_mock.create = jobs_create
+    ws.jobs = jobs_mock
+    ws.dashboards.create.return_value = Dashboard(id="abc")
+    ws.queries.create.return_value = Query(id="abc")
+    ws.query_visualizations.create.return_value = Visualization(id="abc")
+    ws.dashboard_widgets.create.return_value = Widget(id="abc")
+
+    ws.warehouses.list = lambda **_: [
+        EndpointInfo(id="abc", name="abc", warehouse_type=EndpointInfoWarehouseType.PRO, state=State.RUNNING)
+    ]
+
+    def not_found(path: str):
+        raise NotFound()
+
+    ws.workspace.download = not_found
+
+    install = WorkspaceInstaller(ws, sql_backend=MockBackend())
+    cluster_id = "9999-999999-abcdefgh"
+    mocker.patch("builtins.input", return_value=cluster_id)
+    res = install._configure_override_clusters()
+    assert res["main"] == cluster_id
+    assert res["tacl"] == cluster_id
+
+    def mock_question(text: str, *, default: str | None = None) -> str:
+        if "workspace group names" in text:
+            return "<ALL>"
+        if "Inventory Database" in text:
+            return "ucx_default"
+        return "42"
+
+    install._question = mock_question
+    install._choice = lambda _1, _2: "abc (abc, PRO, RUNNING)"
+
+    from databricks.labs.ucx.framework.tasks import Task
+
+    tasks = [
+        Task(task_id=0, workflow="wl_1", name="n3", doc="d3", fn=lambda: None),
+        Task(task_id=1, workflow="wl_2", name="n2", doc="d2", fn=lambda: None),
+        Task(task_id=2, workflow="wl_1", name="n1", doc="d1", fn=lambda: None),
+    ]
+
+    with mocker.patch.object(WorkspaceInstaller, attribute="_sorted_tasks", return_value=tasks):
+        install = WorkspaceInstaller(ws)
+        install._deployed_steps = {"wl_1": 1, "wl_2": 2}
+        install._create_jobs()
+
+
+#    install._configure()
+#
 def test_replace_clusters_for_integration_tests(ws):
     config_bytes = yaml.dump(WorkspaceConfig(inventory_database="a").as_dict()).encode("utf8")
     ws.workspace.download = lambda _: io.BytesIO(config_bytes)
