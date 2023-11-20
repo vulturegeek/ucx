@@ -79,11 +79,20 @@ def test_install_cluster_override_jobs(ws, mocker, tmp_path):
         Task(task_id=2, workflow="wl_1", name="n1", doc="d1", fn=lambda: None),
     ]
 
+    def mock_question(text: str, *, default: str | None = None) -> str:
+        if "workspace group names" in text:
+            return "<ALL>"
+        if "Open job overview in" in text:
+            return "no"
+        return "42"
+
     with mocker.patch.object(WorkspaceInstaller, attribute="_sorted_tasks", return_value=tasks):
         config_bytes = yaml.dump(WorkspaceConfig(inventory_database="a").as_dict()).encode("utf8")
         ws.workspace.download = lambda _: io.BytesIO(config_bytes)
         install = WorkspaceInstaller(ws)
+        install._question = mock_question
         install._deployed_steps = {"wl_1": 1, "wl_2": 2}
+        install._job_dashboard_task = MagicMock(name="_job_dashboard_task")
         install._create_jobs()
 
 
