@@ -650,9 +650,20 @@ class WorkspaceInstaller:
             remote_wheel = f"{self._install_folder}/wheels/{local_wheel.name}"
             remote_dirname = os.path.dirname(remote_wheel)
             with local_wheel.open("rb") as f:
-                self._ws.dbfs.mkdirs(remote_dirname)
-                logger.info(f"Uploading wheel to dbfs:{remote_wheel}")
-                self._ws.dbfs.upload(remote_wheel, f, overwrite=True)
+                try:
+                    self._ws.dbfs.mkdirs(remote_dirname)
+                    logger.info(f"Uploading wheel to dbfs:{remote_wheel}")
+                    self._ws.dbfs.upload(remote_wheel, f, overwrite=True)
+                except OperationFailed as err:
+                    logger.warning(f"Uploading wheel file to DBFS failed, DBFS is probably write protected. {err}")
+                    # assume DBFS is write protected
+                    self._write_protected_dbfs = True
+                    if not self._override_clusters:
+                        logger.error("Recommend adding override clusters with attached wheel file as python library.")
+                        raise err
+                    else:
+                        logger.warning(f"Continuing with override clusters {self._override_clusters}")
+
             with local_wheel.open("rb") as f:
                 self._ws.workspace.mkdirs(remote_dirname)
                 logger.info(f"Uploading wheel to /Workspace{remote_wheel}")
