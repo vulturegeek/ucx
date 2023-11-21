@@ -86,11 +86,16 @@ def test_install_cluster_override_jobs(ws, mocker, tmp_path):
             return "no"
         return "42"
 
-    def mock_create_job(**args):
-        assert args["job_clusters"] == [], "job_clusters argument should be empty list"
-        return jobs.CreateResponse(job_id="abc")
-
     cluster_id = "9999-999999-abcdefgh"
+
+    def mock_create_job(**args):
+        """Intercept job.create api calls to validate"""
+        assert args["job_clusters"] == [], "job_clusters argument should be empty list"
+        for task in args["tasks"]:
+            if isinstance(task, Task):
+                assert task.libraries is None, task.libraries
+                assert task.existing_cluster_id == cluster_id
+        return jobs.CreateResponse(job_id="abc")
 
     with mocker.patch.object(WorkspaceInstaller, attribute="_sorted_tasks", return_value=tasks):
         config_bytes = yaml.dump(WorkspaceConfig(inventory_database="a").as_dict()).encode("utf8")
@@ -100,11 +105,8 @@ def test_install_cluster_override_jobs(ws, mocker, tmp_path):
         install._question = mock_question
         install._deployed_steps = {"wl_1": 1, "wl_2": 2}
         install._override_clusters = {"main": cluster_id, "tacl": cluster_id}
-        install._job_dashboard_task = MagicMock(name="_job_dashboard_task")
+        install._job_dashboard_task = MagicMock(name="_job_dashboard_task")  # disable problematic task
         install._create_jobs()
-
-
-#        ws.jobs.create.assert_called_with(job_clusters=[])
 
 
 def test_replace_clusters_for_integration_tests(ws):
