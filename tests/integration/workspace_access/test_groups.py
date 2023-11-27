@@ -6,11 +6,15 @@ import pytest
 from databricks.sdk.errors import NotFound
 from databricks.sdk.retries import retried
 from databricks.sdk.service import sql
-from databricks.sdk.service.iam import ResourceMeta
+from databricks.sdk.service.iam import PermissionLevel, ResourceMeta
 
 from databricks.labs.ucx.hive_metastore import GrantsCrawler, TablesCrawler
 from databricks.labs.ucx.hive_metastore.grants import Grant
 from databricks.labs.ucx.workspace_access import redash
+from databricks.labs.ucx.workspace_access.generic import (
+    GenericPermissionsSupport,
+    Listing,
+)
 from databricks.labs.ucx.workspace_access.groups import GroupManager
 from databricks.labs.ucx.workspace_access.manager import PermissionManager
 from databricks.labs.ucx.workspace_access.redash import RedashPermissionsSupport
