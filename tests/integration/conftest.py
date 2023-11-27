@@ -12,6 +12,9 @@ from databricks.sdk.core import Config
 from databricks.sdk.errors import NotFound
 from databricks.sdk.retries import retried
 
+from databricks.labs.ucx.framework.crawlers import SqlBackend
+from databricks.labs.ucx.hive_metastore import TablesCrawler
+from databricks.labs.ucx.hive_metastore.tables import Table
 from databricks.labs.ucx.mixins.fixtures import *  # noqa: F403
 
 logging.getLogger("tests").setLevel("DEBUG")
@@ -104,3 +107,23 @@ def make_ucx_group(make_random, make_group, make_acc_group, user_pool):
         return ws_group, acc_group
 
     return inner
+
+
+class StaticTablesCrawler(TablesCrawler):
+    def __init__(self, sql_backend: SqlBackend, schema: str, tables: list[TableInfo]):
+        super().__init__(sql_backend, schema)
+        self._tables = [
+            Table(
+                catalog=_.catalog_name,
+                database=_.schema_name,
+                name=_.name,
+                object_type="TABLE" if not _.view_definition else "VIEW",
+                view_text=_.view_definition,
+                location=_.storage_location,
+                table_format=f"{_.data_source_format}",
+            )
+            for _ in tables
+        ]
+
+    def snapshot(self) -> list[Table]:
+        return self._tables
