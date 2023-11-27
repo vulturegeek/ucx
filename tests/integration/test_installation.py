@@ -67,6 +67,7 @@ def test_jobs_with_no_inventory_database(
     make_table,
     env_or_skip,
 ):
+    # TODO: (nfx) 5 minute optimization potential: parallelize 4 tasks: wait clusters, fixtures, and installation
     inventory_database = f"ucx_{make_random(4)}"
     default_cluster_id = env_or_skip("TEST_DEFAULT_CLUSTER_ID")
     tacl_cluster_id = env_or_skip("TEST_LEGACY_TABLE_ACL_CLUSTER_ID")
